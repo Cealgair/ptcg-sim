@@ -21,6 +21,9 @@ export const exchangeData = (user, username, deckData, cardBack, coachingMode, c
         if (coachingModeCheckbox.checked && coachingMode){
             systemState.coachingMode = true;
             flipBoardButton.style.display = 'inline-block';
+        } else{
+            systemState.coachingMode = false;
+            flipBoardButton.style.display = 'none';
         };
         appendMessage('', systemState.p2OppUsername + ' joined', 'announcement', false);
         reset('opp', true, true, false, false);
