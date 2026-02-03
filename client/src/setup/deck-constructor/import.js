@@ -195,28 +195,7 @@ const cardDataToID = (card) => {
   return null;
 }
 
-const cardDataToImageURL = (card) => {
-  /*
-  card is espected to be as follows (things can be undefined):
-    {
-      "set": "set code",
-      "number": "card number",
-      "id": "pokemontcg.io id"
-      "name": "card name",
-      "region": "int for international, tpc for Japanese"
-    }
-  */
-
-  let set = card["set"];
-  let number = card["number"];
-  //let id = card["id"];
-  let id = cardDataToID(card);
-  let name = card["name"];
-  let region = card["region"];
-  if(!region){
-    region = "int";
-  }
-
+const getLanguage = () => {
   const languageText = changeLanguageButton.textContent;
   let language;
   switch (languageText) {
@@ -241,8 +220,14 @@ const cardDataToImageURL = (card) => {
     default:
       language = 'EN';
   }
+  return language;
+}
 
-  const energies = {
+const getEnergies = (language) => {
+  if(!language){
+    language = getLanguage();
+  }
+  return {
     'Fire Energy': `https://limitlesstcg.nyc3.digitaloceanspaces.com/tpci/BRS/BRS_R_R_${language}.png`,
     'Grass Energy': `https://limitlesstcg.nyc3.digitaloceanspaces.com/tpci/BRS/BRS_G_R_${language}.png`,
     'Fairy Energy': `https://limitlesstcg.nyc3.digitaloceanspaces.com/tpci/TEU/TEU_Y_R_${language}.png`,
@@ -280,10 +265,39 @@ const cardDataToImageURL = (card) => {
     'Basic Metal Energy null': `https://limitlesstcg.nyc3.digitaloceanspaces.com/tpci/SVE/SVE_008_R_${language}.png`,
     'Basic Water Energy null': `https://limitlesstcg.nyc3.digitaloceanspaces.com/tpci/SVE/SVE_003_R_${language}.png`,
   };
-  if(!set){
+}
+
+const cardDataToImageURL = (card) => {
+  /*
+  card is espected to be as follows (things can be undefined):
+    {
+      "set": "set code",
+      "number": "card number",
+      "id": "pokemontcg.io id"
+      "name": "card name",
+      "region": "int for international, tpc for Japanese"
+    }
+  */
+
+
+  //console.log(card);
+
+  let set = card["set"];
+  let number = card["number"];
+  //let id = card["id"];
+  let id = cardDataToID(card);
+  let name = card["name"];
+  let region = card["region"];
+  if(!region){
+    region = "int";
+  }
+
+  let language = getLanguage();
+  const energies = getEnergies(language);
+  if((set==='null') || !set){
     if(!id){
-      if(energies["name"]){
-        return energies["name"];
+      if(energies[name]){
+        return energies[name];
       }
       return "";
     }
@@ -345,6 +359,7 @@ const cardDataToImageURL = (card) => {
   if(set){
     if(!number){
       console.log(set);
+      console.log(card);
     }
     const paddedNumber = number.replace(
       /^(\d+)([a-zA-Z])?$/,
@@ -390,6 +405,28 @@ const LimitlessDecklistArray = async (decklist) => {
       }),
       card_types[card["card_type"]]
     ])
+  }
+  for(let error of response["errors"]){
+    let card_name = error.match(/Card \"(.+)\" was not found./);
+    if(card_name){
+      card_name = card_name[1];
+      let qty = decklist.match(RegExp('(\\d+) '+card_name.trim()));
+      if(qty){
+        decklistArray.push([
+          qty[1],
+          card_name,
+          null,null,null,null,null
+        ])
+      }
+      else{
+        // in theory this should never happen, but sometimes Limitless adds inexplicable spaces and it ends up happening
+        decklistArray.push([
+          0,
+          card_name,
+          null,null,null,null,null
+        ])
+      }
+    }
   }
   //console.log(decklistArray);
   return decklistArray;
@@ -509,13 +546,18 @@ const DecklistArray = async (decklist,limitless) => {
        "id": decklistArray[i][4],
        "name": decklistArray[i][1]
     });
-    if(decklistArray[i][2]){
-      if(decklistArray[i][3]){
-        decklistArray[i][6] = getCardType(decklistArray[i][2], decklistArray[i][3]);
+    if(!decklistArray[i][6]){
+      if(decklistArray[i][2]){
+        if(decklistArray[i][3]){
+          decklistArray[i][6] = getCardType(decklistArray[i][2], decklistArray[i][3]);
+        }
       }
-    }
-    if(decklistArray[i][4]){
-      decklistArray[i][6] = getOldCardType(decklistArray[i][4]);
+      if(decklistArray[i][4]){
+        decklistArray[i][6] = getOldCardType(decklistArray[i][4]);
+      }
+      if(getEnergies()[decklistArray[i][1]]){
+        decklistArray[i][6] = 'Energy'
+      }
     }
   }
   return decklistArray;
